@@ -1,0 +1,24 @@
+#include <mega128.h>
+#include <delay.h>
+#include "Pin_IO.h"
+
+void Port_Init()
+{
+    
+    /*********** ‰»Î***********/
+    DDRB.0 = 1;
+    PORTB.0 = 1;
+}
+
+
+void main()
+{
+ Port_Init(); 
+ while(1)
+ {  
+   delay_ms(1000);
+   PORTB.0 = 1;
+   delay_ms(1000);
+   PORTB.0 = 0;
+ }  
+}

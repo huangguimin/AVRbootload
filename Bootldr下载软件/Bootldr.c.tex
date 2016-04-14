@@ -1,0 +1,575 @@
+\documentclass{article}
+\usepackage{color}
+\usepackage{alltt}
+
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0,0,0}{#1}}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.5,0,0.5}{\bf{#1}}}
+\newcommand{\hlesc}[1]{\textcolor[rgb]{1,0,1}{\bf{#1}}}
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.65,0.52,0}{#1}}
+\newcommand{\hlpps}[1]{\textcolor[rgb]{0,0,1}{#1}}
+\newcommand{\hlslc}[1]{\textcolor[rgb]{0.95,0.47,0}{#1}}
+\newcommand{\hlcom}[1]{\textcolor[rgb]{1,0.5,0}{#1}}
+\newcommand{\hlppc}[1]{\textcolor[rgb]{0,0.5,0.75}{\bf{#1}}}
+\newcommand{\hlopt}[1]{\textcolor[rgb]{1,0,0.5}{\bf{#1}}}
+\newcommand{\hllin}[1]{\textcolor[rgb]{0.19,0.19,0.19}{#1}}
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.73,0.47,0.47}{\bf{#1}}}
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.5,0.5,0.75}{\bf{#1}}}
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0,0.5,0.75}{#1}}
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0,0.27,0.4}{#1}}
+\definecolor{bgcolor}{rgb}{0.93,0.93,0.93}
+
+\title{Bootldr.c}
+\begin{document}
+\pagecolor{bgcolor}
+\noindent
+\ttfamily
+\hlstd{}\hlcom{/{*}}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{e\ Y8b}\hlstd{\ \ \ \ }\hlcom{Y8b\ YV4.08P888\ 88e}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{d8b\ Y8b}\hlstd{\ \ \ \ }\hlcom{Y8b\ Y888P\ 888\ 888D}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{d888b\ Y8b}\hlstd{\ \ \ \ }\hlcom{Y8b\ Y8P}\hlstd{\ \ }\hlcom{888\ 88"}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{d888WuHan8b}\hlstd{\ \ \ \ }\hlcom{Y8b\ Y}\hlstd{\ \ \ }\hlcom{888\ b,}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{d8888888b\ Y8b}\hlstd{\ \ \ \ }\hlcom{Y8P}\hlstd{\ \ \ \ }\hlcom{888\ 88b,}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlcom{8888\ 8888}\hlstd{\ \ \ \ \ \ \ }\hlcom{,e,}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlcom{8888\ 888820088e}\hlstd{\ \ }\hlcom{"\ Y8b\ Y888P\ ,e\ e,\ 888,8,\ dP"Y\ ,"Y88b888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlcom{8888\ 8888888\ 88b888\ Y8b\ Y8P\ d88\ 88b888\ "\ C88b\ "8"\ 888888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlcom{8888\ 8888888\ 888888}\hlstd{\ \ }\hlcom{Y8b\ "}\hlstd{\ \ }\hlcom{888}\hlstd{\ \ \ }\hlcom{,888}\hlstd{\ \ \ \ }\hlcom{Y88D,ee\ 888888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlcom{'Y88\ 88P'888\ 888888}\hlstd{\ \ \ }\hlcom{Y8P}\hlstd{\ \ \ \ }\hlcom{"YeeP"888}\hlstd{\ \ \ }\hlcom{d,dP\ "88\ 888888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ }\hlcom{888\ 88b,}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{d8}\hlstd{\ \ }\hlcom{888}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ }\hlcom{888\ 88P'\ e88\ 88e}\hlstd{\ \ }\hlcom{e88\ 88e}\hlstd{\ \ }\hlcom{d88}\hlstd{\ \ }\hlcom{888\ e88\ 88e}\hlstd{\ \ }\hlcom{,"Y88b\ e88\ 888\ ,e\ e,\ 888,8,}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ }\hlcom{888\ 8K}\hlstd{\ \ }\hlcom{d888\ 888bd888\ 8Shaoziyang88d888\ 888b"8"\ 888d888\ 888d88\ 88b888\ "}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ }\hlcom{888\ 88b,Y888\ 888PY888\ 888P\ 888}\hlstd{\ \ }\hlcom{888Y888\ 888P,ee\ 888Y888\ 888888}\hlstd{\ \ \ }\hlcom{,888}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ }\hlcom{888\ 88P'\ "88\ 88"}\hlstd{\ \ }\hlcom{"88\ 88"}\hlstd{\ \ }\hlcom{888}\hlstd{\ \ }\hlcom{888\ "88\ 88"\ "88\ 888\ "88\ 888\ "YeeP"888}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{Project:}\hlstd{\ \ \ \ \ \ \ }\hlcom{AVR\ 通用\ Bootloader}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{File:}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlcom{bootldr.c}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{主程序}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{Version:}\hlstd{\ \ \ \ \ \ \ }\hlcom{4.2}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{Compiler:}\hlstd{\ \ \ \ \ \ }\hlcom{WinAVR\ 20071221\ +\ AVR\ Studio\ 4.14.589}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{Author:}\hlstd{\ \ \ \ \ \ \ \ }\hlcom{Shaoziyang}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{Shaoziyang@gmail.com}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{http://avrubd.googlepages.com}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{http://groups.google.com/group/avrub?hl=en}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{Date:}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlcom{2008.6}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{}\hlstd{\ \ }\hlcom{查看\ readme.htm\ 获得更多相关内容.}\hspace*{\fill}\\
+\hlcom{}\hspace*{\fill}\\
+\hlcom{{*}/}\hlstd{}\hspace*{\fill}\\
+\hspace*{\fill}\\
+\hlppc{\#include\ }\hlpps{"bootcfg.h"}\hlppc{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#include\ }\hlpps{"bootldr.h"}\hlppc{}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//用户程序起始地}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#define\ PROG\textunderscore START}\hlstd{\ \ \ \ \ \ \ \ \ }\hlppc{0x0000}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//删除IVT}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#define\ noIVT}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlppc{0}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//接收缓冲区大小不能小于\ SPM\textunderscore PAGESIZE}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (BUFFERSIZE\ $<$\ SPM\textunderscore PAGESIZE)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#define\ BUFSIZE\ SPM\textunderscore PAGESIZE}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#define\ BUFSIZE\ BUFFERSIZE}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//接收缓冲区}\hspace*{\fill}\\
+\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{buf}\hlopt{{[}}\hlstd{BUFSIZE}\hlopt{{]};}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ (BUFSIZE\ $>$\ 255)}\hspace*{\fill}\\
+\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{bufptr}\hlopt{,\ }\hlstd{pagptr}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{bufptr}\hlopt{,\ }\hlstd{pagptr}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlkwb{unsigned\ char\ }\hlstd{ch}\hlopt{,\ }\hlstd{cl}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//当前Flash地址指针}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (FLASHEND\ $>$\ 0xFFFFUL)}\hspace*{\fill}\\
+\hlstd{}\hlkwb{unsigned\ long\ int\ }\hlstd{FlashAddr}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{FlashAddr}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//包含解密子程序文件}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ Decrypt}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//PC1\ 解密算法子程序}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (Algorithm\ ==\ PC1\textunderscore 128)\textbar \textbar (Algorithm\ ==\ PC1\textunderscore 256)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#include\ }\hlpps{"pc1crypt.c"}\hlppc{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#elif\ (Algorithm\ ==\ AES\textunderscore 128)\textbar \textbar (Algorithm\ ==\ AES\textunderscore 256)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#include\ }\hlpps{"aes.c"}\hlppc{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#error\ }\hlpps{"Unknow\ encrypt\ algorithm!"}\hlppc{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#endif}\hlstd{\ \ }\hlppc{}\hlslc{//Decrypt}\hspace*{\fill}\\
+\hlppc{}\hlstd{}\hspace*{\fill}\\
+\hspace*{\fill}\\
+\hlslc{//更新一个Flash页}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{write\textunderscore one\textunderscore page}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{}\hlopt{{*}}\hlstd{buf}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{boot\textunderscore page\textunderscore erase}\hlstd{}\hlopt{(}\hlstd{FlashAddr}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//擦除一个Flash页}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{boot\textunderscore spm\textunderscore busy\textunderscore wait}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{for}\hlstd{}\hlopt{(}\hlstd{pagptr\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;\ }\hlstd{pagptr\ }\hlopt{$<$\ }\hlstd{SPM\textunderscore PAGESIZE}\hlopt{;\ }\hlstd{pagptr\ }\hlopt{+=\ }\hlstd{}\hlnum{2}\hlstd{}\hlopt{)\ }\hlstd{}\hlslc{//数据填入Flash缓冲页}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{boot\textunderscore page\textunderscore fill}\hlstd{}\hlopt{(}\hlstd{pagptr}\hlopt{,\ }\hlstd{buf}\hlopt{{[}}\hlstd{pagptr}\hlopt{{]}\ \textbar \ (}\hlstd{buf}\hlopt{{[}}\hlstd{pagptr\ }\hlopt{+\ }\hlstd{}\hlnum{1}\hlstd{}\hlopt{{]}\ $<$$<$\ }\hlstd{}\hlnum{8}\hlstd{}\hlopt{));}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{boot\textunderscore page\textunderscore write}\hlstd{}\hlopt{(}\hlstd{FlashAddr}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//将缓冲页数据写入一个Flash页}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{boot\textunderscore spm\textunderscore busy\textunderscore wait}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//等待页编程完成}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//跳转到用户程序}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{quit}\hlstd{}\hlopt{()}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ Decrypt}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{DestroyKey}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//销毁密钥}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlkwd{boot\textunderscore rww\textunderscore enable}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//允许用户程序区读写}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{({*}((}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{({*})(}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{))}\hlstd{PROG\textunderscore START}\hlopt{))();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//跳转，这样比'jmp\ 0'节省空间}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//写入数据到串口}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{dat}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ RS485}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{RS485Enable}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlkwd{UDRREG}\hlstd{}\hlopt{(}\hlstd{COMPORTNo}\hlopt{)\ =\ }\hlstd{dat}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//等待数据发送完成}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(!(}\hlstd{}\hlkwd{UCSRAREG}\hlstd{}\hlopt{(}\hlstd{COMPORTNo}\hlopt{)\ \&\ (}\hlstd{}\hlnum{1}\hlstd{}\hlopt{$<$$<$}\hlstd{}\hlkwd{TXCBIT}\hlstd{}\hlopt{(}\hlstd{COMPORTNo}\hlopt{))));}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{UCSRAREG}\hlstd{}\hlopt{(}\hlstd{COMPORTNo}\hlopt{)\ \textbar =\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{}\hlkwd{TXCBIT}\hlstd{}\hlopt{(}\hlstd{COMPORTNo}\hlopt{));}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ RS485}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{RS485Disable}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//等待串口数据}\hspace*{\fill}\\
+\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{()}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(!}\hlstd{}\hlkwd{DataInCom}\hlstd{}\hlopt{());}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{return\ }\hlstd{}\hlkwd{ReadCom}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlslc{//发送字符串并添加回车}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{const\ char\ }\hlstd{}\hlopt{{*}}\hlstd{str}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{({*}}\hlstd{str}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{({*}}\hlstd{str}\hlopt{++);}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{}\hlnum{0x0D}\hlstd{}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{}\hlnum{0x0A}\hlstd{}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//计算CRC校验：1021}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{crc16}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{}\hlopt{{*}}\hlstd{buf}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (BUFSIZE\ $>$\ 255)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{j}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{j}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ (CRCMODE\ ==\ 0)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{i}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{t}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{crc}\hlopt{;}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{crc\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{for}\hlstd{}\hlopt{(}\hlstd{j\ }\hlopt{=\ }\hlstd{BUFFERSIZE}\hlopt{;\ }\hlstd{j\ }\hlopt{$>$\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;\ }\hlstd{j}\hlopt{{-}{-})}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (CRCMODE\ ==\ 0)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//标准CRC校验}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{crc\ }\hlopt{=\ (}\hlstd{crc\ }\hlopt{\textasciicircum \ (((}\hlstd{}\hlkwb{unsigned\ int}\hlstd{}\hlopt{)\ {*}}\hlstd{buf}\hlopt{)\ $<$$<$\ }\hlstd{}\hlnum{8}\hlstd{}\hlopt{));}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{for}\hlstd{}\hlopt{(}\hlstd{i\ }\hlopt{=\ }\hlstd{}\hlnum{8}\hlstd{}\hlopt{;\ }\hlstd{i\ }\hlopt{$>$\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;\ }\hlstd{i}\hlopt{{-}{-})}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{t\ }\hlopt{=\ }\hlstd{crc\ }\hlopt{$<$$<$\ }\hlstd{}\hlnum{1}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{crc\ }\hlopt{\&\ }\hlstd{}\hlnum{0x8000}\hlstd{}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{t\ }\hlopt{=\ }\hlstd{t\ }\hlopt{\textasciicircum \ }\hlstd{}\hlnum{0x1021}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{crc\ }\hlopt{=\ }\hlstd{t}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#elif\ (CRCMODE\ ==\ 1)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//累加和校验}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{crc\ }\hlopt{+=\ (}\hlstd{}\hlkwb{unsigned\ int}\hlstd{}\hlopt{)({*}}\hlstd{buf}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#elif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{buf}\hlopt{++;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{ch\ }\hlopt{=\ }\hlstd{crc\ }\hlopt{/\ }\hlstd{}\hlnum{256}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{cl\ }\hlopt{=\ }\hlstd{crc\ }\hlopt{\%\ }\hlstd{}\hlnum{256}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//如果你要删除中断向量表(interrupt\ vect\ table),\ 定义\ noIVT\ 为\ 1}\hspace*{\fill}\\
+\hlstd{}\hlslc{//并在链接选项中添加\ "{-}nostartfiles"\ 选项}\hspace*{\fill}\\
+\hlstd{}\hlslc{//删除中断向量表}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ noIVT}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{initstack}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{)\ }\hlstd{}\hlkwd{\textunderscore \textunderscore attribute\textunderscore \textunderscore \ }\hlstd{}\hlopt{((}\hlstd{}\hlkwd{section}\hlstd{}\hlopt{(}\hlstd{}\hlstr{".init9"}\hlstd{}\hlopt{)));}\hspace*{\fill}\\
+\hlstd{}\hlkwb{void\ }\hlstd{}\hlkwd{initstack}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{)\ }\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//设置堆栈}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{asm\ }\hlstd{}\hlkwc{volatile\ }\hlstd{}\hlopt{(\ }\hlstd{}\hlstr{".set\ \textunderscore \textunderscore stack,\ \%0"}\hlstd{\ }\hlopt{::\ }\hlstd{}\hlstr{"i"}\hlstd{\ }\hlopt{(}\hlstd{RAMEND}\hlopt{)\ );\ }\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//跳转到主程序}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{asm\ }\hlstd{}\hlkwc{volatile\ }\hlstd{}\hlopt{(\ }\hlstd{}\hlstr{"rjmp\ main"}\hlstd{}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//主程序}\hspace*{\fill}\\
+\hlstd{}\hlkwb{int\ }\hlstd{}\hlkwd{main}\hlstd{}\hlopt{(}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{cnt}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{packNO}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{crch}\hlopt{,\ }\hlstd{crcl}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ (InitDelay\ $>$\ 0)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (InitDelay\ $>$\ 255)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{di}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#elif\ InitDelay}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{di}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ (BUFFERSIZE\ $>$\ 255)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ int\ }\hlstd{li}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwb{unsigned\ char\ }\hlstd{li}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlslc{//关闭中断，异常情况下的保护}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{cli}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ WDG\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//允许看门狗，设置看门狗超时时间}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{wdt\textunderscore enable}\hlstd{}\hlopt{(}\hlstd{WDTO\textunderscore 1S}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//禁止看门狗}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#ifndef\ MCUSR}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#define\ MCUSR}\hlstd{\ \ \ \ }\hlppc{MCUCSR}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{MCUSR\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{wdt\textunderscore disable}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlslc{//时钟初始化:CTC模式}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{TimerInit}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ RS485}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//初始化\ RS485\ 端口}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{DDRREG}\hlstd{}\hlopt{(}\hlstd{RS485PORT}\hlopt{)\ \textbar =\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{RS485TXEn}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{RS485Disable}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ LED\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//设置LED端口为输出状态}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{DDRREG}\hlstd{}\hlopt{(}\hlstd{LEDPORT}\hlopt{)\ \textbar =\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{LEDPORTNo}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlslc{//串口初始化}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{ComInit}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ InitDelay\ $>$\ 0}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//某些早期型号的单片机需要额外延时}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{for}\hlstd{}\hlopt{(}\hlstd{di\ }\hlopt{=\ }\hlstd{InitDelay}\hlopt{;\ }\hlstd{di\ }\hlopt{$>$\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;\ }\hlstd{di}\hlopt{{-}{-})}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{\textunderscore \textunderscore asm\textunderscore \textunderscore \ }\hlkwd{\textunderscore \textunderscore volatile\textunderscore \textunderscore \ }\hlstd{}\hlopt{(}\hlstd{}\hlstr{"nop"}\hlstd{}\hlopt{:\ :\ );}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ LEVELMODE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//引脚电平启动Bootloader模式}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//设置端口为输入状态}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{DDRREG}\hlstd{}\hlopt{(}\hlstd{LEVELPORT}\hlopt{)\ \&=\ $\sim$(}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{LEVELPIN}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ PINLEVEL}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{PINREG}\hlstd{}\hlopt{(}\hlstd{LEVELPORT}\hlopt{)\ \&\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{LEVELPIN}\hlopt{))}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(!(}\hlstd{}\hlkwd{PINREG}\hlstd{}\hlopt{(}\hlstd{LEVELPORT}\hlopt{)\ \&\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{LEVELPIN}\hlopt{)))}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//提示进入升级模式}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg6}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//提示进入用户程序}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg7}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{quit}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//串口启动Bootloader模式}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlslc{//提示等待密码}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg1}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{cnt\ }\hlopt{=\ }\hlstd{TimeOutCnt}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{cl\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(}\hlstd{}\hlnum{1}\hlstd{}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ WDG\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//清除看门狗}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{wdt\textunderscore reset}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{TIFRREG\ }\hlopt{\&\ (}\hlstd{}\hlnum{1}\hlstd{}\hlopt{$<$$<$}\hlstd{OCF1A}\hlopt{))}\hlstd{\ \ \ \ }\hlopt{}\hlstd{}\hlslc{//T1溢出}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{TIFRREG\ }\hlopt{\textbar =\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{OCF1A}\hlopt{);}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cl\ }\hlopt{==\ }\hlstd{CONNECTCNT}\hlopt{)}\hlstd{\ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//判断连接密码}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{break}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ LED\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwd{LEDAlt}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//LED指示状态}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ \ \ }\hlstd{cnt}\hlopt{{-}{-};}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cnt\ }\hlopt{==\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//连接超时}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg2}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//提示超时}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{quit}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//退出bootloader}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{DataInCom}\hlstd{}\hlopt{())}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//接收到连接密码}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{ReadCom}\hlstd{}\hlopt{()\ ==\ }\hlstd{ConnectKey}\hlopt{{[}}\hlstd{cl}\hlopt{{]})}\hlstd{\ \ }\hlopt{}\hlstd{}\hlslc{//比较密码}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ }\hlstd{cl}\hlopt{++;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ }\hlstd{}\hlslc{//putstr("a");}\hspace*{\fill}\\
+\hlstd{\ }\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{cl\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#endif}\hlstd{\ \ }\hlppc{}\hlslc{//LEVELMODE}\hspace*{\fill}\\
+\hlppc{}\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg3}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//提示等待接收文件}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ Decrypt}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{DecryptInit}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlslc{//每个时隙向PC机发送一个控制字符“C”，等待控制字〈soh〉}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{cnt\ }\hlopt{=\ }\hlstd{TimeOutCntC}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(}\hlstd{}\hlnum{1}\hlstd{}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{TIFRREG\ }\hlopt{\&\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{OCF1A}\hlopt{))}\hlstd{\ \ }\hlopt{}\hlstd{}\hlslc{//T1溢出}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{TIFRREG\ }\hlopt{\textbar =\ (}\hlstd{}\hlnum{1\ }\hlstd{}\hlopt{$<$$<$\ }\hlstd{OCF1A}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore RWC}\hlopt{)\ ;}\hlstd{\ \ \ \ }\hlopt{}\hlstd{}\hlslc{//发送\ "C"}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ LED\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwd{LEDAlt}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//LED指示状态}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ \ \ }\hlstd{cnt}\hlopt{{-}{-};}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cnt\ }\hlopt{==\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//超时}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg2}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//提示超时}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{quit}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//退出\ bootloader}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ WDG\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{wdt\textunderscore reset}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//清除看门狗}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{DataInCom}\hlstd{}\hlopt{())}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{ReadCom}\hlstd{}\hlopt{()\ ==\ }\hlstd{XMODEM\textunderscore SOH}\hlopt{)}\hlstd{\ \ }\hlopt{}\hlstd{}\hlslc{//XMODEM命令开始}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{break}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{TCCR1B\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//关闭定时器1}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlslc{//开始接受数据}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{packNO\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{bufptr\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{cnt\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{FlashAddr\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{do}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{packNO}\hlopt{++;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{ch\ }\hlopt{=}\hlstd{\ \ }\hlopt{}\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//获取包序号}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{cl\ }\hlopt{=\ $\sim$}\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{if\ }\hlstd{}\hlopt{((}\hlstd{packNO\ }\hlopt{==\ }\hlstd{ch}\hlopt{)\ \&\&\ (}\hlstd{packNO\ }\hlopt{==\ }\hlstd{cl}\hlopt{))}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{for}\hlstd{}\hlopt{(}\hlstd{li\ }\hlopt{=\ }\hlstd{BUFFERSIZE}\hlopt{;\ }\hlstd{li\ }\hlopt{$>$\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;\ }\hlstd{li}\hlopt{{-}{-})}\hlstd{\ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//接收完整一帧数据}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{buf}\hlopt{{[}}\hlstd{bufptr}\hlopt{++{]}\ =\ }\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{crch\ }\hlopt{=\ }\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//获取校验字节}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{crcl\ }\hlopt{=\ }\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{();}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ }\hlstd{}\hlslc{//puts("b");}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwd{crc16}\hlstd{}\hlopt{(\&}\hlstd{buf}\hlopt{{[}}\hlstd{bufptr\ }\hlopt{{-}\ }\hlstd{BUFFERSIZE}\hlopt{{]});}\hlstd{\ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//计算校验}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{((}\hlstd{crch\ }\hlopt{==\ }\hlstd{ch}\hlopt{)\ \&\&\ (}\hlstd{crcl\ }\hlopt{==\ }\hlstd{cl}\hlopt{))}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ BootStart}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{FlashAddr\ }\hlopt{$<$\ }\hlstd{BootStart}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//避免写入Boot区}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ Decrypt}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{DecryptBlock}\hlstd{}\hlopt{(\&}\hlstd{buf}\hlopt{{[}}\hlstd{bufptr\ }\hlopt{{-}\ }\hlstd{BUFFERSIZE}\hlopt{{]},\ }\hlstd{BUFFERSIZE}\hlopt{);\ }\hlstd{}\hlslc{//解密缓冲区}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ BUFFERSIZE\ $<$=\ SPM\textunderscore PAGESIZE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{bufptr\ }\hlopt{$>$=\ }\hlstd{SPM\textunderscore PAGESIZE}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//缓冲区满，写入数据；否则继续接收}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//接收多个帧，写入一页}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{write\textunderscore one\textunderscore page}\hlstd{}\hlopt{(}\hlstd{buf}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//写入缓冲区内容到Flash中}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{FlashAddr\ }\hlopt{+=\ }\hlstd{SPM\textunderscore PAGESIZE}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//修改Flash页地址}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{bufptr\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(}\hlstd{bufptr\ }\hlopt{$>$\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//接收一帧，写入多个页面}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{write\textunderscore one\textunderscore page}\hlstd{}\hlopt{(\&}\hlstd{buf}\hlopt{{[}}\hlstd{BUFSIZE\ }\hlopt{{-}\ }\hlstd{bufptr}\hlopt{{]});}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{FlashAddr\ }\hlopt{+=\ }\hlstd{SPM\textunderscore PAGESIZE}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//修改Flash页地址}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{bufptr\ }\hlopt{{-}=\ }\hlstd{SPM\textunderscore PAGESIZE}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ BootStart}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{else}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlkwa{}\hlstd{}\hlslc{//超过BootStart范围，忽略写操作}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{bufptr\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//重置接收指针}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//读取写入的Flash内容并和缓冲区的内容做比较}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (ChipCheck\ $>$\ 0)\ \&\&\ (BootStart\ $>$\ 0)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (BUFFERSIZE\ $<$\ SPM\textunderscore PAGESIZE)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{((}\hlstd{bufptr\ }\hlopt{==\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{)\ \&\&\ (}\hlstd{FlashAddr\ }\hlopt{$<$\ }\hlstd{BootStart}\hlopt{))}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{FlashAddr\ }\hlopt{$<$\ }\hlstd{BootStart}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{boot\textunderscore rww\textunderscore enable}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//允许读用户程序}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{cl\ }\hlopt{=\ }\hlstd{}\hlnum{1}\hlstd{}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//清除错误标志位}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{for}\hlstd{}\hlopt{(}\hlstd{pagptr\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;\ }\hlstd{pagptr\ }\hlopt{$<$\ }\hlstd{BUFSIZE}\hlopt{;\ }\hlstd{pagptr}\hlopt{++)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (FLASHEND\ $>$\ 0xFFFFUL)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{pgm\textunderscore read\textunderscore byte\textunderscore far}\hlstd{}\hlopt{(}\hlstd{FlashAddr\ }\hlopt{{-}\ }\hlstd{BUFSIZE\ }\hlopt{+\ }\hlstd{pagptr}\hlopt{)\ !=\ }\hlstd{buf}\hlopt{{[}}\hlstd{pagptr}\hlopt{{]})}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{pgm\textunderscore read\textunderscore byte}\hlstd{}\hlopt{(}\hlstd{FlashAddr\ }\hlopt{{-}\ }\hlstd{BUFSIZE\ }\hlopt{+\ }\hlstd{pagptr}\hlopt{)\ !=\ }\hlstd{buf}\hlopt{{[}}\hlstd{pagptr}\hlopt{{]})}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{cl\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//设置错误标志位}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{break}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cl}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//校验正确，发送正常反馈}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore ACK}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{cnt\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore NAK}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//校验错误，请求重发}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{cnt}\hlopt{++;}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//错误计数加1}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ }\hlstd{FlashAddr\ }\hlopt{{-}=\ }\hlstd{BUFSIZE}\hlopt{;}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//修正FlashAddr地址}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwa{else}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlkwa{}\hlstd{}\hlslc{//不校验Boot区，直接发送正确回应}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore ACK}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ \ \ }\hlstd{cnt\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore ACK}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//不校验，直接发送正确响应}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{cnt\ }\hlopt{=\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ WDG\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{wdt\textunderscore reset}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//清除看门狗}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ LED\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{LEDAlt}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//LED\ 指示升级状态}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{else\ }\hlstd{}\hlslc{//CRC}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore NAK}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//要求重发数据}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ \ \ }\hlstd{cnt}\hlopt{++;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{else\ }\hlstd{}\hlslc{//PackNo}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore NAK}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//要求重发数据}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{cnt}\hlopt{++;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cnt\ }\hlopt{$>$\ }\hlstd{}\hlnum{3}\hlstd{}\hlopt{)}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//连续出错次数太多，中止升级}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ \ \ }\hlstd{}\hlkwa{break}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(}\hlstd{}\hlkwd{WaitCom}\hlstd{}\hlopt{()\ !=\ }\hlstd{XMODEM\textunderscore EOT}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwd{WriteCom}\hlstd{}\hlopt{(}\hlstd{XMODEM\textunderscore ACK}\hlopt{);}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hspace*{\fill}\\
+\hlppc{\#if\ VERBOSE}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cnt\ }\hlopt{==\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//升级成功}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg4}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//提示升级成功}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{else}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\{}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlslc{//升级失败}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwd{putstr}\hlstd{}\hlopt{(}\hlstd{msg5}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//提示升级失败}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#if\ WDG\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(}\hlstd{}\hlnum{1}\hlstd{}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//等待看门狗复位}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (BootStart\ $>$\ 0)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{({*}((}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{({*})(}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{))(}\hlstd{BootStart}\hlopt{)))();}\hlstd{\ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//跳转到\ bootloader}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#else}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlkwa{if}\hlstd{}\hlopt{(}\hlstd{cnt\ }\hlopt{$>$\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{)}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ WDG\textunderscore En}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlkwa{while}\hlstd{}\hlopt{(}\hlstd{}\hlnum{1}\hlstd{}\hlopt{);}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//升级失败，等待看门狗复位}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#else}\hlstd{\ \ \ \ }\hlppc{}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#if\ (BootStart\ $>$\ 0)}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ \ \ }\hlstd{}\hlopt{({*}((}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{({*})(}\hlstd{}\hlkwb{void}\hlstd{}\hlopt{))(}\hlstd{BootStart}\hlopt{)))();}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlppc{\#endif}\hspace*{\fill}\\
+\hlstd{\hspace*{\fill}\\
+}\hlstd{\ \ }\hlstd{}\hlkwd{quit}\hlstd{}\hlopt{();}\hlstd{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\hlopt{}\hlstd{}\hlslc{//退出bootloader}\hspace*{\fill}\\
+\hlstd{}\hlstd{\ \ }\hlstd{}\hlkwa{return\ }\hlstd{}\hlnum{0}\hlstd{}\hlopt{;}\hspace*{\fill}\\
+\hlstd{}\hlopt{\}}\hspace*{\fill}\\
+\hlstd{}\hspace*{\fill}\\
+\hlslc{//End\ of\ file:\ bootldr.c}\hlstd{}\hspace*{\fill}\\
+\mbox{}
+\normalfont
+\normalsize
+\end {document}
+(* LaTeX generated by highlight 3.9, http://www.andre-simon.de/ *)

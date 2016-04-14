@@ -1,0 +1,556 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Bootldr.c</title>
+<link rel="stylesheet" type="text/css" href="highlight.css">
+</head>
+<body class="hl">
+<pre class="hl"><span class="hl com">/*</span>
+<span class="hl com"></span>
+<span class="hl com">                           e Y8b    Y8b YV4.08P888 88e</span>
+<span class="hl com">                          d8b Y8b    Y8b Y888P 888 888D</span>
+<span class="hl com">                         d888b Y8b    Y8b Y8P  888 88&quot;</span>
+<span class="hl com">                        d888WuHan8b    Y8b Y   888 b,</span>
+<span class="hl com">                       d8888888b Y8b    Y8P    888 88b,</span>
+<span class="hl com">           8888 8888       ,e,                                  888</span>
+<span class="hl com">           8888 888820088e  &quot; Y8b Y888P ,e e, 888,8, dP&quot;Y ,&quot;Y88b888</span>
+<span class="hl com">           8888 8888888 88b888 Y8b Y8P d88 88b888 &quot; C88b &quot;8&quot; 888888</span>
+<span class="hl com">           8888 8888888 888888  Y8b &quot;  888   ,888    Y88D,ee 888888</span>
+<span class="hl com">           'Y88 88P'888 888888   Y8P    &quot;YeeP&quot;888   d,dP &quot;88 888888</span>
+<span class="hl com">   888 88b,                    d8  888                     888</span>
+<span class="hl com">   888 88P' e88 88e  e88 88e  d88  888 e88 88e  ,&quot;Y88b e88 888 ,e e, 888,8,</span>
+<span class="hl com">   888 8K  d888 888bd888 8Shaoziyang88d888 888b&quot;8&quot; 888d888 888d88 88b888 &quot;</span>
+<span class="hl com">   888 88b,Y888 888PY888 888P 888  888Y888 888P,ee 888Y888 888888   ,888</span>
+<span class="hl com">   888 88P' &quot;88 88&quot;  &quot;88 88&quot;  888  888 &quot;88 88&quot; &quot;88 888 &quot;88 888 &quot;YeeP&quot;888</span>
+<span class="hl com"></span>
+<span class="hl com"></span>
+<span class="hl com">  Project:       AVR 通用 Bootloader</span>
+<span class="hl com">  File:          bootldr.c</span>
+<span class="hl com">                 主程序</span>
+<span class="hl com">  Version:       4.2</span>
+<span class="hl com"></span>
+<span class="hl com">  Compiler:      WinAVR 20071221 + AVR Studio 4.14.589</span>
+<span class="hl com"></span>
+<span class="hl com">  Author:        Shaoziyang</span>
+<span class="hl com">                 Shaoziyang&#64;gmail.com</span>
+<span class="hl com">                 http://avrubd.googlepages.com</span>
+<span class="hl com">                 http://groups.google.com/group/avrub?hl=en</span>
+<span class="hl com">                 </span>
+<span class="hl com">  Date:          2008.6</span>
+<span class="hl com"></span>
+<span class="hl com">  查看 readme.htm 获得更多相关内容.</span>
+<span class="hl com"></span>
+<span class="hl com">*/</span>
+
+<span class="hl ppc">#include</span> <span class="hl pps">&quot;bootcfg.h&quot;</span><span class="hl ppc"></span>
+<span class="hl ppc">#include</span> <span class="hl pps">&quot;bootldr.h&quot;</span><span class="hl ppc"></span>
+
+<span class="hl slc">//用户程序起始地</span>
+<span class="hl ppc">#define PROG_START         0x0000</span>
+
+<span class="hl slc">//删除IVT</span>
+<span class="hl ppc">#define noIVT              0</span>
+
+<span class="hl slc">//接收缓冲区大小不能小于 SPM_PAGESIZE</span>
+<span class="hl ppc">#if (BUFFERSIZE &lt; SPM_PAGESIZE)</span>
+<span class="hl ppc">#define BUFSIZE SPM_PAGESIZE</span>
+<span class="hl ppc">#else</span>
+<span class="hl ppc">#define BUFSIZE BUFFERSIZE</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl slc">//接收缓冲区</span>
+<span class="hl kwb">unsigned char</span> buf<span class="hl opt">[</span>BUFSIZE<span class="hl opt">];</span>
+
+<span class="hl ppc">#if (BUFSIZE &gt; 255)</span>
+<span class="hl kwb">unsigned int</span> bufptr<span class="hl opt">,</span> pagptr<span class="hl opt">;</span>
+<span class="hl ppc">#else</span>
+<span class="hl kwb">unsigned char</span> bufptr<span class="hl opt">,</span> pagptr<span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl kwb">unsigned char</span> ch<span class="hl opt">,</span> cl<span class="hl opt">;</span>
+
+<span class="hl slc">//当前Flash地址指针</span>
+<span class="hl ppc">#if (FLASHEND &gt; 0xFFFFUL)</span>
+<span class="hl kwb">unsigned long int</span> FlashAddr<span class="hl opt">;</span>
+<span class="hl ppc">#else</span>
+<span class="hl kwb">unsigned int</span> FlashAddr<span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl slc">//包含解密子程序文件</span>
+<span class="hl ppc">#if Decrypt</span>
+
+<span class="hl slc">//PC1 解密算法子程序</span>
+<span class="hl ppc">#if (Algorithm == PC1_128)||(Algorithm == PC1_256)</span>
+<span class="hl ppc">#include</span> <span class="hl pps">&quot;pc1crypt.c&quot;</span><span class="hl ppc"></span>
+<span class="hl ppc">#elif (Algorithm == AES_128)||(Algorithm == AES_256)</span>
+<span class="hl ppc">#include</span> <span class="hl pps">&quot;aes.c&quot;</span><span class="hl ppc"></span>
+<span class="hl ppc">#else</span>
+<span class="hl ppc">#error</span> <span class="hl pps">&quot;Unknow encrypt algorithm!&quot;</span><span class="hl ppc"></span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#endif</span>  <span class="hl slc">//Decrypt</span>
+<span class="hl ppc"></span>
+
+<span class="hl slc">//更新一个Flash页</span>
+<span class="hl kwb">void</span> <span class="hl kwd">write_one_page</span><span class="hl opt">(</span><span class="hl kwb">unsigned char</span> <span class="hl opt">*</span>buf<span class="hl opt">)</span>
+<span class="hl opt">{</span>
+  <span class="hl kwd">boot_page_erase</span><span class="hl opt">(</span>FlashAddr<span class="hl opt">);</span>                  <span class="hl slc">//擦除一个Flash页</span>
+  <span class="hl kwd">boot_spm_busy_wait</span><span class="hl opt">();</span>
+  <span class="hl kwa">for</span><span class="hl opt">(</span>pagptr <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span> pagptr <span class="hl opt">&lt;</span> SPM_PAGESIZE<span class="hl opt">;</span> pagptr <span class="hl opt">+=</span> <span class="hl num">2</span><span class="hl opt">)</span> <span class="hl slc">//数据填入Flash缓冲页</span>
+  <span class="hl opt">{</span>
+    <span class="hl kwd">boot_page_fill</span><span class="hl opt">(</span>pagptr<span class="hl opt">,</span> buf<span class="hl opt">[</span>pagptr<span class="hl opt">] | (</span>buf<span class="hl opt">[</span>pagptr <span class="hl opt">+</span> <span class="hl num">1</span><span class="hl opt">] &lt;&lt;</span> <span class="hl num">8</span><span class="hl opt">));</span>
+  <span class="hl opt">}</span>
+  <span class="hl kwd">boot_page_write</span><span class="hl opt">(</span>FlashAddr<span class="hl opt">);</span>                  <span class="hl slc">//将缓冲页数据写入一个Flash页</span>
+  <span class="hl kwd">boot_spm_busy_wait</span><span class="hl opt">();</span>                        <span class="hl slc">//等待页编程完成</span>
+<span class="hl opt">}</span>
+
+<span class="hl slc">//跳转到用户程序</span>
+<span class="hl kwb">void</span> <span class="hl kwd">quit</span><span class="hl opt">()</span>
+<span class="hl opt">{</span>
+<span class="hl ppc">#if Decrypt</span>
+    <span class="hl kwd">DestroyKey</span><span class="hl opt">();</span>                              <span class="hl slc">//销毁密钥</span>
+<span class="hl ppc">#endif</span>
+
+  <span class="hl kwd">boot_rww_enable</span><span class="hl opt">();</span>                           <span class="hl slc">//允许用户程序区读写</span>
+  <span class="hl opt">(*((</span><span class="hl kwb">void</span><span class="hl opt">(*)(</span><span class="hl kwb">void</span><span class="hl opt">))</span>PROG_START<span class="hl opt">))();</span>            <span class="hl slc">//跳转，这样比'jmp 0'节省空间</span>
+<span class="hl opt">}</span>
+
+<span class="hl slc">//写入数据到串口</span>
+<span class="hl kwb">void</span> <span class="hl kwd">WriteCom</span><span class="hl opt">(</span><span class="hl kwb">unsigned char</span> dat<span class="hl opt">)</span>
+<span class="hl opt">{</span>
+<span class="hl ppc">#if RS485</span>
+  <span class="hl kwd">RS485Enable</span><span class="hl opt">();</span>
+<span class="hl ppc">#endif</span>
+
+  <span class="hl kwd">UDRREG</span><span class="hl opt">(</span>COMPORTNo<span class="hl opt">) =</span> dat<span class="hl opt">;</span>
+  <span class="hl slc">//等待数据发送完成</span>
+  <span class="hl kwa">while</span><span class="hl opt">(!(</span><span class="hl kwd">UCSRAREG</span><span class="hl opt">(</span>COMPORTNo<span class="hl opt">) &amp; (</span><span class="hl num">1</span><span class="hl opt">&lt;&lt;</span><span class="hl kwd">TXCBIT</span><span class="hl opt">(</span>COMPORTNo<span class="hl opt">))));</span>
+  <span class="hl kwd">UCSRAREG</span><span class="hl opt">(</span>COMPORTNo<span class="hl opt">) |= (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> <span class="hl kwd">TXCBIT</span><span class="hl opt">(</span>COMPORTNo<span class="hl opt">));</span>
+
+<span class="hl ppc">#if RS485</span>
+  <span class="hl kwd">RS485Disable</span><span class="hl opt">();</span>
+<span class="hl ppc">#endif</span>
+<span class="hl opt">}</span>
+
+<span class="hl slc">//等待串口数据</span>
+<span class="hl kwb">unsigned char</span> <span class="hl kwd">WaitCom</span><span class="hl opt">()</span>
+<span class="hl opt">{</span>
+  <span class="hl kwa">while</span><span class="hl opt">(!</span><span class="hl kwd">DataInCom</span><span class="hl opt">());</span>
+  <span class="hl kwa">return</span> <span class="hl kwd">ReadCom</span><span class="hl opt">();</span>
+<span class="hl opt">}</span>
+
+<span class="hl ppc">#if VERBOSE</span>
+<span class="hl slc">//发送字符串并添加回车</span>
+<span class="hl kwb">void</span> <span class="hl kwd">putstr</span><span class="hl opt">(</span><span class="hl kwb">const char</span> <span class="hl opt">*</span>str<span class="hl opt">)</span>
+<span class="hl opt">{</span>
+  <span class="hl kwa">while</span><span class="hl opt">(*</span>str<span class="hl opt">)</span>
+    <span class="hl kwd">WriteCom</span><span class="hl opt">(*</span>str<span class="hl opt">++);</span>
+
+  <span class="hl kwd">WriteCom</span><span class="hl opt">(</span><span class="hl num">0x0D</span><span class="hl opt">);</span>
+  <span class="hl kwd">WriteCom</span><span class="hl opt">(</span><span class="hl num">0x0A</span><span class="hl opt">);</span>
+<span class="hl opt">}</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl slc">//计算CRC校验：1021</span>
+<span class="hl kwb">void</span> <span class="hl kwd">crc16</span><span class="hl opt">(</span><span class="hl kwb">unsigned char</span> <span class="hl opt">*</span>buf<span class="hl opt">)</span>
+<span class="hl opt">{</span>
+<span class="hl ppc">#if (BUFSIZE &gt; 255)</span>
+  <span class="hl kwb">unsigned int</span> j<span class="hl opt">;</span>
+<span class="hl ppc">#else</span>
+  <span class="hl kwb">unsigned char</span> j<span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if (CRCMODE == 0)</span>
+  <span class="hl kwb">unsigned char</span> i<span class="hl opt">;</span>
+  <span class="hl kwb">unsigned int</span> t<span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+  <span class="hl kwb">unsigned int</span> crc<span class="hl opt">;</span>
+
+  crc <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  <span class="hl kwa">for</span><span class="hl opt">(</span>j <span class="hl opt">=</span> BUFFERSIZE<span class="hl opt">;</span> j <span class="hl opt">&gt;</span> <span class="hl num">0</span><span class="hl opt">;</span> j<span class="hl opt">--)</span>
+  <span class="hl opt">{</span>
+<span class="hl ppc">#if (CRCMODE == 0)</span>
+    <span class="hl slc">//标准CRC校验</span>
+    crc <span class="hl opt">= (</span>crc <span class="hl opt">^ (((</span><span class="hl kwb">unsigned int</span><span class="hl opt">) *</span>buf<span class="hl opt">) &lt;&lt;</span> <span class="hl num">8</span><span class="hl opt">));</span>
+    <span class="hl kwa">for</span><span class="hl opt">(</span>i <span class="hl opt">=</span> <span class="hl num">8</span><span class="hl opt">;</span> i <span class="hl opt">&gt;</span> <span class="hl num">0</span><span class="hl opt">;</span> i<span class="hl opt">--)</span>
+    <span class="hl opt">{</span>
+      t <span class="hl opt">=</span> crc <span class="hl opt">&lt;&lt;</span> <span class="hl num">1</span><span class="hl opt">;</span>
+      <span class="hl kwa">if</span><span class="hl opt">(</span>crc <span class="hl opt">&amp;</span> <span class="hl num">0x8000</span><span class="hl opt">)</span>
+        t <span class="hl opt">=</span> t <span class="hl opt">^</span> <span class="hl num">0x1021</span><span class="hl opt">;</span>
+      crc <span class="hl opt">=</span> t<span class="hl opt">;</span>
+    <span class="hl opt">}</span>
+<span class="hl ppc">#elif (CRCMODE == 1)</span>
+    <span class="hl slc">//累加和校验</span>
+    crc <span class="hl opt">+= (</span><span class="hl kwb">unsigned int</span><span class="hl opt">)(*</span>buf<span class="hl opt">);</span>
+<span class="hl ppc">#elif</span>
+
+<span class="hl ppc">#endif</span>
+    buf<span class="hl opt">++;</span>
+  <span class="hl opt">}</span>
+  ch <span class="hl opt">=</span> crc <span class="hl opt">/</span> <span class="hl num">256</span><span class="hl opt">;</span>
+  cl <span class="hl opt">=</span> crc <span class="hl opt">%</span> <span class="hl num">256</span><span class="hl opt">;</span>
+<span class="hl opt">}</span>
+
+<span class="hl slc">//如果你要删除中断向量表(interrupt vect table), 定义 noIVT 为 1</span>
+<span class="hl slc">//并在链接选项中添加 &quot;-nostartfiles&quot; 选项</span>
+<span class="hl slc">//删除中断向量表</span>
+<span class="hl ppc">#if noIVT</span>
+<span class="hl kwb">void</span> <span class="hl kwd">initstack</span><span class="hl opt">(</span><span class="hl kwb">void</span><span class="hl opt">)</span> <span class="hl kwd">__attribute__</span> <span class="hl opt">((</span><span class="hl kwd">section</span><span class="hl opt">(</span><span class="hl str">&quot;.init9&quot;</span><span class="hl opt">)));</span>
+<span class="hl kwb">void</span> <span class="hl kwd">initstack</span><span class="hl opt">(</span><span class="hl kwb">void</span><span class="hl opt">)</span> 
+<span class="hl opt">{</span>
+  <span class="hl slc">//设置堆栈</span>
+  <span class="hl kwa">asm</span> <span class="hl kwc">volatile</span> <span class="hl opt">(</span> <span class="hl str">&quot;.set __stack, %0&quot;</span> <span class="hl opt">::</span> <span class="hl str">&quot;i&quot;</span> <span class="hl opt">(</span>RAMEND<span class="hl opt">) );</span> 
+  <span class="hl slc">//跳转到主程序</span>
+  <span class="hl kwa">asm</span> <span class="hl kwc">volatile</span> <span class="hl opt">(</span> <span class="hl str">&quot;rjmp main&quot;</span><span class="hl opt">);</span>
+<span class="hl opt">}</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl slc">//主程序</span>
+<span class="hl kwb">int</span> <span class="hl kwd">main</span><span class="hl opt">(</span><span class="hl kwb">void</span><span class="hl opt">)</span>
+<span class="hl opt">{</span>
+  <span class="hl kwb">unsigned char</span> cnt<span class="hl opt">;</span>
+  <span class="hl kwb">unsigned char</span> packNO<span class="hl opt">;</span>
+  <span class="hl kwb">unsigned char</span> crch<span class="hl opt">,</span> crcl<span class="hl opt">;</span>
+
+<span class="hl ppc">#if (InitDelay &gt; 0)</span>
+<span class="hl ppc">#if (InitDelay &gt; 255)</span>
+  <span class="hl kwb">unsigned int</span> di<span class="hl opt">;</span>
+<span class="hl ppc">#elif InitDelay</span>
+  <span class="hl kwb">unsigned char</span> di<span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if (BUFFERSIZE &gt; 255)</span>
+  <span class="hl kwb">unsigned int</span> li<span class="hl opt">;</span>
+<span class="hl ppc">#else</span>
+  <span class="hl kwb">unsigned char</span> li<span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+
+  <span class="hl slc">//关闭中断，异常情况下的保护</span>
+  <span class="hl kwd">cli</span><span class="hl opt">();</span>
+
+<span class="hl ppc">#if WDG_En</span>
+  <span class="hl slc">//允许看门狗，设置看门狗超时时间</span>
+  <span class="hl kwd">wdt_enable</span><span class="hl opt">(</span>WDTO_1S<span class="hl opt">);</span>
+<span class="hl ppc">#else</span>
+  <span class="hl slc">//禁止看门狗</span>
+<span class="hl ppc">#ifndef MCUSR</span>
+<span class="hl ppc">#define MCUSR    MCUCSR</span>
+<span class="hl ppc">#endif</span>
+  MCUSR <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  <span class="hl kwd">wdt_disable</span><span class="hl opt">();</span>
+<span class="hl ppc">#endif</span>
+
+  <span class="hl slc">//时钟初始化:CTC模式</span>
+  <span class="hl kwd">TimerInit</span><span class="hl opt">();</span>
+
+<span class="hl ppc">#if RS485</span>
+  <span class="hl slc">//初始化 RS485 端口</span>
+  <span class="hl kwd">DDRREG</span><span class="hl opt">(</span>RS485PORT<span class="hl opt">) |= (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> RS485TXEn<span class="hl opt">);</span>
+  <span class="hl kwd">RS485Disable</span><span class="hl opt">();</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if LED_En</span>
+  <span class="hl slc">//设置LED端口为输出状态</span>
+  <span class="hl kwd">DDRREG</span><span class="hl opt">(</span>LEDPORT<span class="hl opt">) |= (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> LEDPORTNo<span class="hl opt">);</span>
+<span class="hl ppc">#endif</span>
+
+  <span class="hl slc">//串口初始化</span>
+  <span class="hl kwd">ComInit</span><span class="hl opt">();</span>
+
+<span class="hl ppc">#if InitDelay &gt; 0</span>
+  <span class="hl slc">//某些早期型号的单片机需要额外延时</span>
+  <span class="hl kwa">for</span><span class="hl opt">(</span>di <span class="hl opt">=</span> InitDelay<span class="hl opt">;</span> di <span class="hl opt">&gt;</span> <span class="hl num">0</span><span class="hl opt">;</span> di<span class="hl opt">--)</span>
+    __asm__ <span class="hl kwd">__volatile__</span> <span class="hl opt">(</span><span class="hl str">&quot;nop&quot;</span><span class="hl opt">: : );</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if LEVELMODE</span>
+  <span class="hl slc">//引脚电平启动Bootloader模式</span>
+  <span class="hl slc">//设置端口为输入状态</span>
+  <span class="hl kwd">DDRREG</span><span class="hl opt">(</span>LEVELPORT<span class="hl opt">) &amp;= ~(</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> LEVELPIN<span class="hl opt">);</span>
+<span class="hl ppc">#if PINLEVEL</span>
+  <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">PINREG</span><span class="hl opt">(</span>LEVELPORT<span class="hl opt">) &amp; (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> LEVELPIN<span class="hl opt">))</span>
+<span class="hl ppc">#else</span>
+  <span class="hl kwa">if</span><span class="hl opt">(!(</span><span class="hl kwd">PINREG</span><span class="hl opt">(</span>LEVELPORT<span class="hl opt">) &amp; (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> LEVELPIN<span class="hl opt">)))</span>
+<span class="hl ppc">#endif</span>
+  <span class="hl opt">{</span>
+<span class="hl ppc">#if VERBOSE</span>
+    <span class="hl slc">//提示进入升级模式</span>
+    <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg6<span class="hl opt">);</span>
+<span class="hl ppc">#endif</span>
+  <span class="hl opt">}</span>
+  <span class="hl kwa">else</span>
+  <span class="hl opt">{</span>
+<span class="hl ppc">#if VERBOSE</span>
+    <span class="hl slc">//提示进入用户程序</span>
+    <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg7<span class="hl opt">);</span>
+<span class="hl ppc">#endif</span>
+
+    <span class="hl kwd">quit</span><span class="hl opt">();</span>
+  <span class="hl opt">}</span>
+
+<span class="hl ppc">#else</span>
+  <span class="hl slc">//串口启动Bootloader模式</span>
+
+<span class="hl ppc">#if VERBOSE</span>
+  <span class="hl slc">//提示等待密码</span>
+  <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg1<span class="hl opt">);</span>
+<span class="hl ppc">#endif</span>
+
+  cnt <span class="hl opt">=</span> TimeOutCnt<span class="hl opt">;</span>
+  cl <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  <span class="hl kwa">while</span><span class="hl opt">(</span><span class="hl num">1</span><span class="hl opt">)</span>
+  <span class="hl opt">{</span>
+<span class="hl ppc">#if WDG_En</span>
+    <span class="hl slc">//清除看门狗</span>
+    <span class="hl kwd">wdt_reset</span><span class="hl opt">();</span>
+<span class="hl ppc">#endif</span>
+
+    <span class="hl kwa">if</span><span class="hl opt">(</span>TIFRREG <span class="hl opt">&amp; (</span><span class="hl num">1</span><span class="hl opt">&lt;&lt;</span>OCF1A<span class="hl opt">))</span>    <span class="hl slc">//T1溢出</span>
+    <span class="hl opt">{</span>
+      TIFRREG <span class="hl opt">|= (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> OCF1A<span class="hl opt">);</span>
+
+      <span class="hl kwa">if</span><span class="hl opt">(</span>cl <span class="hl opt">==</span> CONNECTCNT<span class="hl opt">)</span>      <span class="hl slc">//判断连接密码</span>
+        <span class="hl kwa">break</span><span class="hl opt">;</span>
+
+<span class="hl ppc">#if LED_En</span>
+      <span class="hl kwd">LEDAlt</span><span class="hl opt">();</span>                 <span class="hl slc">//LED指示状态</span>
+<span class="hl ppc">#endif</span>
+
+      cnt<span class="hl opt">--;</span>
+      <span class="hl kwa">if</span><span class="hl opt">(</span>cnt <span class="hl opt">==</span> <span class="hl num">0</span><span class="hl opt">)</span>              <span class="hl slc">//连接超时</span>
+      <span class="hl opt">{</span>
+
+<span class="hl ppc">#if VERBOSE</span>
+        <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg2<span class="hl opt">);</span>           <span class="hl slc">//提示超时</span>
+<span class="hl ppc">#endif</span>
+        <span class="hl kwd">quit</span><span class="hl opt">();</span>                 <span class="hl slc">//退出bootloader</span>
+      <span class="hl opt">}</span>
+    <span class="hl opt">}</span>
+
+    <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">DataInCom</span><span class="hl opt">())</span>             <span class="hl slc">//接收到连接密码</span>
+    <span class="hl opt">{</span>
+      <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">ReadCom</span><span class="hl opt">() ==</span> ConnectKey<span class="hl opt">[</span>cl<span class="hl opt">])</span>  <span class="hl slc">//比较密码</span>
+        <span class="hl opt">{</span>
+			cl<span class="hl opt">++;</span>
+			<span class="hl slc">//putstr(&quot;a&quot;);</span>
+	<span class="hl opt">}</span>
+      <span class="hl kwa">else</span>
+        cl <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+    <span class="hl opt">}</span>
+  <span class="hl opt">}</span>
+
+<span class="hl ppc">#endif</span>  <span class="hl slc">//LEVELMODE</span>
+<span class="hl ppc"></span>
+<span class="hl ppc">#if VERBOSE</span>
+  <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg3<span class="hl opt">);</span>                 <span class="hl slc">//提示等待接收文件</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if Decrypt</span>
+  <span class="hl kwd">DecryptInit</span><span class="hl opt">();</span>
+<span class="hl ppc">#endif</span>
+
+  <span class="hl slc">//每个时隙向PC机发送一个控制字符“C”，等待控制字〈soh〉</span>
+  cnt <span class="hl opt">=</span> TimeOutCntC<span class="hl opt">;</span>
+  <span class="hl kwa">while</span><span class="hl opt">(</span><span class="hl num">1</span><span class="hl opt">)</span>
+  <span class="hl opt">{</span>
+    <span class="hl kwa">if</span><span class="hl opt">(</span>TIFRREG <span class="hl opt">&amp; (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> OCF1A<span class="hl opt">))</span>  <span class="hl slc">//T1溢出</span>
+    <span class="hl opt">{</span>
+      TIFRREG <span class="hl opt">|= (</span><span class="hl num">1</span> <span class="hl opt">&lt;&lt;</span> OCF1A<span class="hl opt">);</span>
+      <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_RWC<span class="hl opt">) ;</span>    <span class="hl slc">//发送 &quot;C&quot;</span>
+
+<span class="hl ppc">#if LED_En</span>
+      <span class="hl kwd">LEDAlt</span><span class="hl opt">();</span>                 <span class="hl slc">//LED指示状态</span>
+<span class="hl ppc">#endif</span>
+
+      cnt<span class="hl opt">--;</span>
+      <span class="hl kwa">if</span><span class="hl opt">(</span>cnt <span class="hl opt">==</span> <span class="hl num">0</span><span class="hl opt">)</span>              <span class="hl slc">//超时</span>
+      <span class="hl opt">{</span>
+<span class="hl ppc">#if VERBOSE</span>
+        <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg2<span class="hl opt">);</span>           <span class="hl slc">//提示超时</span>
+<span class="hl ppc">#endif</span>
+        <span class="hl kwd">quit</span><span class="hl opt">();</span>                 <span class="hl slc">//退出 bootloader</span>
+      <span class="hl opt">}</span>
+    <span class="hl opt">}</span>
+
+<span class="hl ppc">#if WDG_En</span>
+    <span class="hl kwd">wdt_reset</span><span class="hl opt">();</span>                <span class="hl slc">//清除看门狗</span>
+<span class="hl ppc">#endif</span>
+
+    <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">DataInCom</span><span class="hl opt">())</span>
+    <span class="hl opt">{</span>
+      <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">ReadCom</span><span class="hl opt">() ==</span> XMODEM_SOH<span class="hl opt">)</span>  <span class="hl slc">//XMODEM命令开始</span>
+        <span class="hl kwa">break</span><span class="hl opt">;</span>
+    <span class="hl opt">}</span>
+  <span class="hl opt">}</span>
+
+  TCCR1B <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>                   <span class="hl slc">//关闭定时器1</span>
+
+  <span class="hl slc">//开始接受数据</span>
+  packNO <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  bufptr <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  cnt <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  FlashAddr <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+  <span class="hl kwa">do</span>
+  <span class="hl opt">{</span>
+    packNO<span class="hl opt">++;</span>
+    ch <span class="hl opt">=</span>  <span class="hl kwd">WaitCom</span><span class="hl opt">();</span>                          <span class="hl slc">//获取包序号</span>
+    cl <span class="hl opt">= ~</span><span class="hl kwd">WaitCom</span><span class="hl opt">();</span>
+    <span class="hl kwa">if</span> <span class="hl opt">((</span>packNO <span class="hl opt">==</span> ch<span class="hl opt">) &amp;&amp; (</span>packNO <span class="hl opt">==</span> cl<span class="hl opt">))</span>
+    <span class="hl opt">{</span>
+      <span class="hl kwa">for</span><span class="hl opt">(</span>li <span class="hl opt">=</span> BUFFERSIZE<span class="hl opt">;</span> li <span class="hl opt">&gt;</span> <span class="hl num">0</span><span class="hl opt">;</span> li<span class="hl opt">--)</span>      <span class="hl slc">//接收完整一帧数据</span>
+      <span class="hl opt">{</span>
+        buf<span class="hl opt">[</span>bufptr<span class="hl opt">++] =</span> <span class="hl kwd">WaitCom</span><span class="hl opt">();</span>
+      <span class="hl opt">}</span>
+      crch <span class="hl opt">=</span> <span class="hl kwd">WaitCom</span><span class="hl opt">();</span>                       <span class="hl slc">//获取校验字节</span>
+      crcl <span class="hl opt">=</span> <span class="hl kwd">WaitCom</span><span class="hl opt">();</span>
+	  <span class="hl slc">//puts(&quot;b&quot;);</span>
+      <span class="hl kwd">crc16</span><span class="hl opt">(&amp;</span>buf<span class="hl opt">[</span>bufptr <span class="hl opt">-</span> BUFFERSIZE<span class="hl opt">]);</span>       <span class="hl slc">//计算校验</span>
+      <span class="hl kwa">if</span><span class="hl opt">((</span>crch <span class="hl opt">==</span> ch<span class="hl opt">) &amp;&amp; (</span>crcl <span class="hl opt">==</span> cl<span class="hl opt">))</span>
+      <span class="hl opt">{</span>
+<span class="hl ppc">#if BootStart</span>
+        <span class="hl kwa">if</span><span class="hl opt">(</span>FlashAddr <span class="hl opt">&lt;</span> BootStart<span class="hl opt">)</span>             <span class="hl slc">//避免写入Boot区</span>
+        <span class="hl opt">{</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if Decrypt</span>
+          <span class="hl kwd">DecryptBlock</span><span class="hl opt">(&amp;</span>buf<span class="hl opt">[</span>bufptr <span class="hl opt">-</span> BUFFERSIZE<span class="hl opt">],</span> BUFFERSIZE<span class="hl opt">);</span> <span class="hl slc">//解密缓冲区</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if BUFFERSIZE &lt;= SPM_PAGESIZE</span>
+          <span class="hl kwa">if</span><span class="hl opt">(</span>bufptr <span class="hl opt">&gt;=</span> SPM_PAGESIZE<span class="hl opt">)</span>          <span class="hl slc">//缓冲区满，写入数据；否则继续接收</span>
+          <span class="hl opt">{</span>                                   <span class="hl slc">//接收多个帧，写入一页</span>
+            <span class="hl kwd">write_one_page</span><span class="hl opt">(</span>buf<span class="hl opt">);</span>              <span class="hl slc">//写入缓冲区内容到Flash中</span>
+            FlashAddr <span class="hl opt">+=</span> SPM_PAGESIZE<span class="hl opt">;</span>        <span class="hl slc">//修改Flash页地址</span>
+            bufptr <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+          <span class="hl opt">}</span>
+<span class="hl ppc">#else</span>
+          <span class="hl kwa">while</span><span class="hl opt">(</span>bufptr <span class="hl opt">&gt;</span> <span class="hl num">0</span><span class="hl opt">)</span>                   <span class="hl slc">//接收一帧，写入多个页面</span>
+          <span class="hl opt">{</span>
+            <span class="hl kwd">write_one_page</span><span class="hl opt">(&amp;</span>buf<span class="hl opt">[</span>BUFSIZE <span class="hl opt">-</span> bufptr<span class="hl opt">]);</span>
+            FlashAddr <span class="hl opt">+=</span> SPM_PAGESIZE<span class="hl opt">;</span>        <span class="hl slc">//修改Flash页地址</span>
+            bufptr <span class="hl opt">-=</span> SPM_PAGESIZE<span class="hl opt">;</span>
+          <span class="hl opt">}</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if BootStart</span>
+        <span class="hl opt">}</span>
+        <span class="hl kwa">else</span>                                  <span class="hl slc">//超过BootStart范围，忽略写操作</span>
+        <span class="hl opt">{</span>
+          bufptr <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>                         <span class="hl slc">//重置接收指针</span>
+        <span class="hl opt">}</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl slc">//读取写入的Flash内容并和缓冲区的内容做比较</span>
+<span class="hl ppc">#if (ChipCheck &gt; 0) &amp;&amp; (BootStart &gt; 0)</span>
+<span class="hl ppc">#if (BUFFERSIZE &lt; SPM_PAGESIZE)</span>
+        <span class="hl kwa">if</span><span class="hl opt">((</span>bufptr <span class="hl opt">==</span> <span class="hl num">0</span><span class="hl opt">) &amp;&amp; (</span>FlashAddr <span class="hl opt">&lt;</span> BootStart<span class="hl opt">))</span>
+<span class="hl ppc">#else</span>
+        <span class="hl kwa">if</span><span class="hl opt">(</span>FlashAddr <span class="hl opt">&lt;</span> BootStart<span class="hl opt">)</span>
+<span class="hl ppc">#endif</span>
+        <span class="hl opt">{</span>
+          <span class="hl kwd">boot_rww_enable</span><span class="hl opt">();</span>                  <span class="hl slc">//允许读用户程序</span>
+          cl <span class="hl opt">=</span> <span class="hl num">1</span><span class="hl opt">;</span>                             <span class="hl slc">//清除错误标志位</span>
+          <span class="hl kwa">for</span><span class="hl opt">(</span>pagptr <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span> pagptr <span class="hl opt">&lt;</span> BUFSIZE<span class="hl opt">;</span> pagptr<span class="hl opt">++)</span>
+          <span class="hl opt">{</span>
+<span class="hl ppc">#if (FLASHEND &gt; 0xFFFFUL)</span>
+            <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">pgm_read_byte_far</span><span class="hl opt">(</span>FlashAddr <span class="hl opt">-</span> BUFSIZE <span class="hl opt">+</span> pagptr<span class="hl opt">) !=</span> buf<span class="hl opt">[</span>pagptr<span class="hl opt">])</span>
+<span class="hl ppc">#else</span>
+            <span class="hl kwa">if</span><span class="hl opt">(</span><span class="hl kwd">pgm_read_byte</span><span class="hl opt">(</span>FlashAddr <span class="hl opt">-</span> BUFSIZE <span class="hl opt">+</span> pagptr<span class="hl opt">) !=</span> buf<span class="hl opt">[</span>pagptr<span class="hl opt">])</span>
+<span class="hl ppc">#endif</span>
+            <span class="hl opt">{</span>
+              cl <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>                         <span class="hl slc">//设置错误标志位</span>
+              <span class="hl kwa">break</span><span class="hl opt">;</span>
+            <span class="hl opt">}</span>
+          <span class="hl opt">}</span>
+          <span class="hl kwa">if</span><span class="hl opt">(</span>cl<span class="hl opt">)</span>                              <span class="hl slc">//校验正确，发送正常反馈</span>
+          <span class="hl opt">{</span>
+            <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_ACK<span class="hl opt">);</span>
+            cnt <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+          <span class="hl opt">}</span>
+          <span class="hl kwa">else</span>
+          <span class="hl opt">{</span>
+            <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_NAK<span class="hl opt">);</span>             <span class="hl slc">//校验错误，请求重发</span>
+            cnt<span class="hl opt">++;</span>                            <span class="hl slc">//错误计数加1</span>
+            FlashAddr <span class="hl opt">-=</span> BUFSIZE<span class="hl opt">;</span>             <span class="hl slc">//修正FlashAddr地址</span>
+          <span class="hl opt">}</span>
+        <span class="hl opt">}</span>
+        <span class="hl kwa">else</span>                                  <span class="hl slc">//不校验Boot区，直接发送正确回应</span>
+        <span class="hl opt">{</span>
+          <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_ACK<span class="hl opt">);</span>
+          cnt <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+        <span class="hl opt">}</span>
+<span class="hl ppc">#else</span>
+        <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_ACK<span class="hl opt">);</span>                 <span class="hl slc">//不校验，直接发送正确响应</span>
+        cnt <span class="hl opt">=</span> <span class="hl num">0</span><span class="hl opt">;</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if WDG_En</span>
+        <span class="hl kwd">wdt_reset</span><span class="hl opt">();</span>                          <span class="hl slc">//清除看门狗</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#if LED_En</span>
+        <span class="hl kwd">LEDAlt</span><span class="hl opt">();</span>                             <span class="hl slc">//LED 指示升级状态</span>
+<span class="hl ppc">#endif</span>
+      <span class="hl opt">}</span>
+      <span class="hl kwa">else</span> <span class="hl slc">//CRC</span>
+      <span class="hl opt">{</span>
+        <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_NAK<span class="hl opt">);</span>                 <span class="hl slc">//要求重发数据</span>
+        cnt<span class="hl opt">++;</span>
+      <span class="hl opt">}</span>
+    <span class="hl opt">}</span>
+    <span class="hl kwa">else</span> <span class="hl slc">//PackNo</span>
+    <span class="hl opt">{</span>
+      <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_NAK<span class="hl opt">);</span>                   <span class="hl slc">//要求重发数据</span>
+      cnt<span class="hl opt">++;</span>
+    <span class="hl opt">}</span>
+
+    <span class="hl kwa">if</span><span class="hl opt">(</span>cnt <span class="hl opt">&gt;</span> <span class="hl num">3</span><span class="hl opt">)</span>                               <span class="hl slc">//连续出错次数太多，中止升级</span>
+      <span class="hl kwa">break</span><span class="hl opt">;</span>
+  <span class="hl opt">}</span>
+  <span class="hl kwa">while</span><span class="hl opt">(</span><span class="hl kwd">WaitCom</span><span class="hl opt">() !=</span> XMODEM_EOT<span class="hl opt">);</span>
+  <span class="hl kwd">WriteCom</span><span class="hl opt">(</span>XMODEM_ACK<span class="hl opt">);</span>
+
+
+<span class="hl ppc">#if VERBOSE</span>
+  <span class="hl kwa">if</span><span class="hl opt">(</span>cnt <span class="hl opt">==</span> <span class="hl num">0</span><span class="hl opt">)</span>
+  <span class="hl opt">{</span>
+    <span class="hl slc">//升级成功</span>
+    <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg4<span class="hl opt">);</span>                             <span class="hl slc">//提示升级成功</span>
+  <span class="hl opt">}</span>
+  <span class="hl kwa">else</span>
+  <span class="hl opt">{</span>
+    <span class="hl slc">//升级失败</span>
+    <span class="hl kwd">putstr</span><span class="hl opt">(</span>msg5<span class="hl opt">);</span>                             <span class="hl slc">//提示升级失败</span>
+
+<span class="hl ppc">#if WDG_En</span>
+    <span class="hl kwa">while</span><span class="hl opt">(</span><span class="hl num">1</span><span class="hl opt">);</span>                                 <span class="hl slc">//等待看门狗复位</span>
+<span class="hl ppc">#else</span>
+<span class="hl ppc">#if (BootStart &gt; 0)</span>
+    <span class="hl opt">(*((</span><span class="hl kwb">void</span><span class="hl opt">(*)(</span><span class="hl kwb">void</span><span class="hl opt">))(</span>BootStart<span class="hl opt">)))();</span>        <span class="hl slc">//跳转到 bootloader</span>
+<span class="hl ppc">#endif</span>
+<span class="hl ppc">#endif</span>
+  <span class="hl opt">}</span>
+
+<span class="hl ppc">#else</span>
+
+  <span class="hl kwa">if</span><span class="hl opt">(</span>cnt <span class="hl opt">&gt;</span> <span class="hl num">0</span><span class="hl opt">)</span>
+<span class="hl ppc">#if WDG_En</span>
+    <span class="hl kwa">while</span><span class="hl opt">(</span><span class="hl num">1</span><span class="hl opt">);</span>                                 <span class="hl slc">//升级失败，等待看门狗复位</span>
+<span class="hl ppc">#else    </span>
+<span class="hl ppc">#if (BootStart &gt; 0)</span>
+    <span class="hl opt">(*((</span><span class="hl kwb">void</span><span class="hl opt">(*)(</span><span class="hl kwb">void</span><span class="hl opt">))(</span>BootStart<span class="hl opt">)))();</span>
+<span class="hl ppc">#endif</span>
+<span class="hl ppc">#endif</span>
+
+<span class="hl ppc">#endif</span>
+
+  <span class="hl kwd">quit</span><span class="hl opt">();</span>                                     <span class="hl slc">//退出bootloader</span>
+  <span class="hl kwa">return</span> <span class="hl num">0</span><span class="hl opt">;</span>
+<span class="hl opt">}</span>
+
+<span class="hl slc">//End of file: bootldr.c</span>
+</pre>
+</body>
+</html>
+<!--HTML generated by highlight 3.9, http://www.andre-simon.de/-->

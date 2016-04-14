@@ -1,0 +1,578 @@
+/*****************************************************
+采用串行接口实现Boot_load应用的实例
+华东师大电子系 马 潮 2004.07
+Compiler:    ICC-AVR 6.31
+Target:    Mega128
+Crystal:    16Mhz
+Used:        T/C0,USART0
+*****************************************************/
+#include <mega128.h>
+#include <delay.h>
+#include <stdio.h>
+
+//#define UPDATE_USB      1
+
+
+
+#define SPM_PAGESIZE 256          //M128的一个Flash页为256字节(128字)
+#define BAUD 38400                //波特率采用38400bps
+#define CRYSTAL 16000000          //系统时钟16MHz
+
+//计算和定义M128的波特率设置参数
+#define BAUD_SETTING (unsigned char)((unsigned long)CRYSTAL/(16*(unsigned long)BAUD)-1)
+#define BAUD_H (unsigned char)(BAUD_SETTING>>8)
+#define BAUD_L (unsigned char)BAUD_SETTING
+#define DATA_BUFFER_SIZE SPM_PAGESIZE        //定义接收缓冲区长度
+
+//定义Xmoden控制字符
+#define XMODEM_NUL 0x00
+#define XMODEM_SOH 0x01
+#define XMODEM_STX 0x02
+#define XMODEM_EOT 0x04
+#define XMODEM_ACK 0x06
+#define XMODEM_NAK 0x15
+#define XMODEM_CAN 0x18
+#define XMODEM_EOF 0x1A
+#define XMODEM_RECIEVING_WAIT_CHAR 'C'
+
+//定义全局变量
+const uchar startupString[]="Type 'd' download, Others run app.\n\r";
+/*
+const uchar a4String1[]="AT+UART=38400,0,0\r\n\0";
+const uchar a4String2[]="AT+UART?\r\n\0";
+*/
+uchar data[DATA_BUFFER_SIZE];
+unsigned long address = 0;
+
+#pragma warn-
+//擦除(code=0x03)和写入(code=0x05)一个Flash页
+void boot_page_ew(uint p_address, uchar code)
+{
+        RAMPZ = 0;    
+
+    #asm
+        ldd r30,y+1
+        ldd r31,y+2         
+        ld r20,y
+        STS 0X68,r20  
+    #endasm
+    #asm("spm");                    //对指定Flash页进行操作 
+
+}   
+#pragma warn+ 
+
+#pragma warn-
+//填充Flash缓冲页中的一个字
+void boot_page_fill(uint address,uint data)
+{
+    #asm
+        ldd r30,y+2  //Z寄存器中为缓冲页地址   
+        ldd r31,y+3
+        ld r0,y
+        ldd r1,y+1   //R0R1中为一个字的数据 
+        LDI r20,0x01
+        STS 0X68,r20
+    #endasm 
+    #asm("spm");   //将R0R1中的数据写入Z寄存器中的缓冲页地址
+}
+#pragma warn+
+
+#pragma warn-
+//等待一个Flash页的写完成
+void wait_page_rw_ok(void)
+{    
+      while(SPMCSR & 0x40)
+     {
+         while(SPMCSR & 0x01);
+         SPMCSR = 0x11;
+         #asm
+            spm
+         #endasm  
+     }
+}
+#pragma warn+
+//更新一个Flash页的完整处理
+void write_one_page(void)
+{  
+    uint i;
+    boot_page_ew(address,0x03);                    //擦除一个Flash页
+    wait_page_rw_ok();                            //等待擦除完成
+    for(i=0;i<SPM_PAGESIZE;i+=2)                //将数据填入Flash缓冲页中
+    {
+        boot_page_fill(i, (data[i]|((uint)(data[i+1])<<8)));
+    }
+    boot_page_ew(address,0x05);                    //将缓冲页数据写入一个Flash页
+    wait_page_rw_ok();                            //等待写入完成            
+}        
+//从RS232发送一个字节
+void uart_putchar(uchar c)
+{
+    while(!(UCSR0A & 0x20));
+    UDR0 = c;
+}
+
+void USART_Send_string(flash uchar *data)
+{
+    uint i = 0;
+    while(data[i] != '\0')
+    uart_putchar(data[i++]);
+}
+//从RS232接收一个字节
+int uart_getchar(void)
+{
+    unsigned char status,res;
+    if(!(UCSR0A & 0x80)) return -1;
+    status = UCSR0A;
+    res = UDR0;      
+    if (status & 0x1c) return -1;        // If error, return -1
+    return res;
+}
+//等待从RS232接收一个有效的字节
+uchar uart_waitchar(void)
+{
+    int c;
+    do
+    {
+        c=uart_getchar();
+    }
+    while(c==-1);
+    return (uchar)c;
+}
+//计算CRC
+uint calcrc(uchar *ptr, uchar count)
+{
+    uint recalcrc = 0;
+    uchar i,j = 0;
+    
+    while (count >= ++j)
+    {
+        recalcrc = recalcrc ^ (uint)*ptr++ << 8;
+        i = 8;
+        do
+        {
+            if (recalcrc & 0x8000)
+                recalcrc = recalcrc << 1 ^ 0x1021;
+            else
+                recalcrc = recalcrc << 1;
+        }while(--i);
+    }
+    return recalcrc;
+}
+
+#ifdef  UPDATE_USB
+//----------------------------------------------U盘模式-----------------------------------------------------------------
+
+/* 附加的USB操作状态定义 */
+#define		ERR_USB_UNKNOWN		0xFA	/* 未知错误,不应该发生的情况,需检查硬件或者程序错误 */
+#define		TRUE	1
+#define		FALSE	0
+#define	SER_SYNC_CODE1		0x57			/* 启动操作的第1个串口同步码 */
+#define	SER_SYNC_CODE2		0xAB			/* 启动操作的第2个串口同步码 */
+#define	CMD01_GET_STATUS	0x22			/* 获取中断状态并取消中断请求 */
+#define	CMD0H_DISK_CONNECT	0x30			/* 主机文件模式/不支持SD卡: 检查磁盘是否连接 */
+#define	CMD0H_DISK_MOUNT	0x31			/* 主机文件模式: 初始化磁盘并测试磁盘是否就绪 */
+
+/************串口1发送一个数据********************/
+
+void USART_Send_word_1(uchar data)
+{
+    while (!(UCSR1A & (1<<UDRE1)));        //等待发送缓冲器为空；
+    UDR1 = data;        //将数据放入缓冲器，发送数据；
+}
+
+uchar USART_Receive_1(void)
+{
+// 等待接收数据
+    uint i = 0;
+    while(!(UCSR1A & (1<<RXC1))){if((++i)>65530)return 0;};
+    return UDR1;
+}
+/*
+void USART_Send_string_1(uchar *data,uchar length)
+{
+    uchar i;
+   for(i = 0; i < length; i++)
+    USART_Send_word_1(data[i]);
+}*/
+
+void xWriteCH376Cmd(uchar mCmd)  /* 向CH376写命令 */
+{
+	USART_Send_word_1(SER_SYNC_CODE1);
+    USART_Send_word_1(SER_SYNC_CODE2);  /* 启动操作的第2个串口同步码 */
+	USART_Send_word_1(mCmd);  /* 串口输出 */
+}
+
+void xWriteCH376Data(uchar mData)  /* 向CH376写数据 */
+{
+	USART_Send_word_1(mData);  /* 串口输出 */
+}
+
+uchar xReadCH376Data( void )  /* 从CH376读数据 */
+{
+	return USART_Receive_1();  /* 串口输入 */
+}
+
+uchar CH376GetIntStatus( void )  /* 获取中断状态并取消中断请求 */
+{
+	uchar	s;
+	xWriteCH376Cmd(CMD01_GET_STATUS);
+	s = xReadCH376Data();
+	return(s);
+}
+
+uchar Wait376Interrupt(void)  /* 等待CH376中断(INT#低电平)，返回中断状态码, 超时则返回ERR_USB_UNKNOWN */
+{
+	long	i;
+	for( i = 0; i < 5000000; i ++ ) {  /* 计数防止超时,默认的超时时间,与单片机主频有关 */
+		if(USART_Receive_1()) return(CH376GetIntStatus( ));  /* 检测到中断 */
+/* 在等待CH376中断的过程中,可以做些需要及时处理的其它事情 */
+	}
+	return(ERR_USB_UNKNOWN);  /* 不应该发生的情况 */
+}
+
+uchar CH376SendCmdWaitInt(uchar mCmd)  /* 发出命令码后,等待中断 */
+{
+	xWriteCH376Cmd(mCmd);
+	return Wait376Interrupt();
+}
+
+/* 查询CH376中断(INT#低电平) */
+uchar Query376Interrupt(void)
+{
+    return USART_Receive_1();
+}
+
+uchar CH376DiskConnect(void)/*检查U盘是否连接*/ 
+{
+    if (Query376Interrupt( )) CH376GetIntStatus( );  /* 检测到中断 */
+    return(CH376SendCmdWaitInt(CMD0H_DISK_CONNECT));
+}
+#define	CMD50_WRITE_VAR32	0x0D			/* 设置指定的32位文件系统变量 */
+void CH376WriteVar32(uchar var, unsigned long dat )  /* 写CH376芯片内部的32位变量 */
+{
+	xWriteCH376Cmd(CMD50_WRITE_VAR32);
+	xWriteCH376Data(var);
+	xWriteCH376Data((uchar)dat);
+	xWriteCH376Data((uchar)((uint)dat >> 8));
+	xWriteCH376Data((uchar)(dat >> 16));
+	xWriteCH376Data((uchar)(dat >> 24));
+}
+
+
+uchar CH376DiskMount(void)  /* 初始化磁盘并测试磁盘是否就绪 */
+{
+	return(CH376SendCmdWaitInt(CMD0H_DISK_MOUNT)); 
+}
+#define	CMD10_SET_FILE_NAME	0x2F			/* 主机文件模式: 设置将要操作的文件的文件名 */
+#define	DEF_SEPAR_CHAR1		0x5C			/* 路径名的分隔符 '\' */
+#define	DEF_SEPAR_CHAR2		0x2F			/* 路径名的分隔符 '/' */
+#define	VAR_CURRENT_CLUST	0x64			/* 当前文件的当前簇号(总长度32位,低字节在前) */
+#define	CMD0H_FILE_OPEN		0x32			/* 主机文件模式: 打开文件或者目录(文件夹),或者枚举文件和目录(文件夹) */
+
+uchar CH376FileOpen(uchar * name)  /* 在根目录或者当前目录下打开文件或者目录(文件夹) */
+{
+   /* 设置将要操作的文件的文件名 */  
+   	uchar	c;
+	xWriteCH376Cmd( CMD10_SET_FILE_NAME );
+	c = *name;
+	xWriteCH376Data(c);
+	while (c)
+    {
+		name++;
+		c = *name;
+		if (c == DEF_SEPAR_CHAR1 || c == DEF_SEPAR_CHAR2) c = 0;  /* 强行将文件名截止 */
+		xWriteCH376Data(c);
+	}
+	if (name[0] == DEF_SEPAR_CHAR1 || name[0] == DEF_SEPAR_CHAR2) CH376WriteVar32( VAR_CURRENT_CLUST, 0 );
+	return(CH376SendCmdWaitInt(CMD0H_FILE_OPEN));
+}
+
+#define	CMD1H_FILE_CLOSE	0x36			/* 主机文件模式: 关闭当前已经打开的文件或者目录(文件夹) */
+uchar CH376FileClose(uchar UpdateSz)  /* 关闭当前已经打开的文件或者目录(文件夹) */
+{
+    xWriteCH376Cmd(CMD1H_FILE_CLOSE);
+	xWriteCH376Data(UpdateSz);
+	return(Wait376Interrupt());
+}
+
+#define	CMD01_RD_USB_DATA0	0x27			/* 从当前USB中断的端点缓冲区或者主机端点的接收缓冲区读取数据块 */
+uchar CH376ReadBlock(uchar * buf)  /* 从当前主机端点的接收缓冲区读取数据块,返回长度 */
+{
+	uchar s, l;
+	xWriteCH376Cmd(CMD01_RD_USB_DATA0);
+	s = l = xReadCH376Data( );  /* 长度 */
+	if(l)
+    {
+		do {
+			*buf = xReadCH376Data( );
+			buf ++;
+		} while ( -- l );
+	}
+	return( s );
+}
+
+#define	CMD2H_BYTE_READ		0x3A			/* 主机文件模式: 以字节为单位从当前位置读取数据块 */
+#define	USB_INT_DISK_READ	0x1D			/* USB存储器请求数据读出 */
+#define	CMD0H_BYTE_RD_GO	0x3B			/* 主机文件模式: 继续字节读 */
+uchar CH376ByteRead(uchar * buf, uint ReqCount, uint * RealCount )  /* 以字节为单位从当前位置读取数据块 */
+{
+	uchar	s;
+	xWriteCH376Cmd(CMD2H_BYTE_READ);
+	xWriteCH376Data((uchar)ReqCount);
+	xWriteCH376Data((uchar)(ReqCount>>8));
+	if (RealCount) *RealCount = 0;
+	while ( 1 ) 
+    {
+		s = Wait376Interrupt( );
+		if (s == USB_INT_DISK_READ) 
+        {
+			s = CH376ReadBlock(buf);  /* 从当前主机端点的接收缓冲区读取数据块,返回长度 */
+			xWriteCH376Cmd(CMD0H_BYTE_RD_GO);
+			buf += s;
+			if (RealCount) *RealCount += s;
+		}
+		else return(s);  /* 错误 */
+	}
+}
+
+
+unsigned long CH376Read32bitDat( void )  /* 从CH376芯片读取32位的数据并结束命令 */
+{
+	uchar	c0, c1, c2, c3;
+	c0 = xReadCH376Data( );
+	c1 = xReadCH376Data( );
+	c2 = xReadCH376Data( );
+	c3 = xReadCH376Data( );
+	return(((unsigned long)c3 << 24) | ((unsigned long)c2 << 16) | ((unsigned long)c1 << 8) | c0 );
+}
+
+#define	CMD14_READ_VAR32	0x0C			/* 读取指定的32位文件系统变量 */
+unsigned long CH376ReadVar32(uchar var)  /* 读CH376芯片内部的32位变量 */
+{
+	xWriteCH376Cmd(CMD14_READ_VAR32);
+	xWriteCH376Data(var);
+	return(CH376Read32bitDat( ) );  /* 从CH376芯片读取32位的数据并结束命令 */
+}
+
+#define	VAR_FILE_SIZE		0x68			/* 当前文件的长度(总长度32位,低字节在前) */
+unsigned long CH376GetFileSize(void)  /* 读取当前文件长度 */
+{
+	return(CH376ReadVar32(VAR_FILE_SIZE));
+}
+//--------------------------------------------------END--------------------------------------------------------------
+#endif
+//退出Bootloader程序，从0x0000处执行应用程序
+void quit(void)
+{
+      uart_putchar('O');uart_putchar('K');
+      uart_putchar(0x0d);uart_putchar(0x0a);
+     while(!(UCSR0A & 0x20));            //等待结束提示信息回送完成
+     MCUCR = 0x01;
+     MCUCR = 0x00;                    //将中断向量表迁移到应用程序区头部
+     RAMPZ = 0x00;                    //RAMPZ清零初始化
+     #asm("jmp 0x0000")        //跳转到Flash的0x0000处，执行用户的应用程序
+}
+
+
+#define	CMD11_CHECK_EXIST	0x06			/* 测试通讯接口和工作状态 */
+#define	CMD11_SET_USB_MODE	0x15			/* 设置USB工作模式 */
+#define	CMD_RET_SUCCESS		0x51			/* 命令操作成功 */
+#define	CMD_RET_ABORT		0x5F			/* 命令操作失败 */
+#define	USB_INT_SUCCESS		0x14			/* USB事务或者传输操作成功 */
+#define	ERR_MISS_FILE		0x42			/* 指定路径的文件没有找到,可能是文件名称错误 */
+//主程序
+void main(void)
+{
+    uint i = 0;
+    uint timercount = 0;
+    uchar packNO = 1;
+    uint bufferPoint = 0;
+    uint crc;     
+#ifdef  UPDATE_USB    
+    uchar s;
+    uint j;
+    unsigned long UpdateSize = 0;
+    uint LabCount = 0,lastdatanum = 0;     
+    uchar string[50] = {0};
+#endif   
+ 
+//初始化M128的USART0   
+    UBRR0L = BAUD_L;            //Set baud rate 
+    UBRR0H = BAUD_H; 
+    UCSR0B = ((1<<RXEN0)|(1<<TXEN0));        //接收器与发送器使能；
+    UCSR0C = (1<<USBS0)|(3<<UCSZ00);        //设置帧格式: 8 个数据位, 1 个停止位；
+#ifdef  UPDATE_USB    
+//初始化M128的USART1    
+    UBRR1L = 8;
+    UBRR1H = 0;
+    UCSR1B = ((1<<RXEN1)|(1<<TXEN1));        //接收器与发送器使能；
+    UCSR1C = (1<<USBS1)|(3<<UCSZ10);        //设置帧格式: 8 个数据位, 1 个停止位；
+#endif    
+//初始化M128的T/C0，15ms自动重载
+    OCR0 = 0x75;
+    TCCR0 = 0x0F;                                                               
+    TCNT0 = 0;  
+    
+    DDRB.0 = 1;
+    PORTB.0 = 1;  
+    /*
+    USART_Send_string(a4String1);
+    while(uart_getchar()!='O');
+    while(uart_getchar()!='K');
+    USART_Send_string(a4String2);  
+    while(uart_getchar()!='O');
+    while(uart_getchar()!='K');  
+    */
+    USART_Send_string(startupString);//向PC机发送开始提示信息  
+    while(1)
+    {    
+        if(uart_getchar()=='d')break;
+        if(TIFR&0x02)
+        {
+            if(++timercount>500) //若没有进入串口升级模式，则进入U盘升级模式 200*15ms=3s
+            {     
+#ifdef  UPDATE_USB
+    
+                sprintf((char*)string,"Enter the USB_Disk Update!\n",UpdateSize);
+                USART_Send_string(string);      
+                //++++++++++++++++初始化CH376S++++++++++++++++++++++++       
+                //CH376_PORT_INIT( );  /* 接口硬件初始化 */
+	            xWriteCH376Cmd(CMD11_CHECK_EXIST);  /* 测试单片机与CH376之间的通讯接口 */
+	            xWriteCH376Data(0x65);  
+	            s = xReadCH376Data( );
+	            if (s != 0x9A) 
+                    uart_putchar(ERR_USB_UNKNOWN);  /* 通讯接口不正常,可能原因有:接口连接异常,其它设备影响(片选不唯一),串口波特率,一直在复位,晶振不工作 */
+	            xWriteCH376Cmd(CMD11_SET_USB_MODE);  /* 设备USB工作模式 */
+	            xWriteCH376Data(0x06);
+	            s = xReadCH376Data( );
+	            if (s != CMD_RET_SUCCESS)  
+                {
+                    sprintf((char*)string,"USB_Disk is wrong init!\n",UpdateSize);
+                    USART_Send_string(string); 
+                    quit();
+                }   
+                //++++++++++++++++++++++END+++++++++++++++++++++++++++++++++
+                //检查U盘是否连接好
+                i = 0;
+                while(CH376DiskConnect() != USB_INT_SUCCESS)
+                {
+                    if(++i > 5)
+                    {   
+                        sprintf((char*)string,"USB_Disk is not Connection!\n",UpdateSize);
+                        USART_Send_string(string); 
+                        quit(); 
+                    }
+                    delay_ms(100);
+                }                  
+                i = 0;
+                // 对于检测到USB设备的,最多等待10*50mS 
+                if(CH376DiskMount() != USB_INT_SUCCESS)
+                {
+                    if(++i > 5)
+                    {
+                        sprintf((char*)string,"USB_Disk Test Wrong!\n",UpdateSize);
+                        USART_Send_string(string); 
+                        quit();
+                    }
+                    delay_ms(100);   
+                }        
+                //打开升级文件
+                s = CH376FileOpen("J8A-1.U");//每台机子，对应升级文件。
+                if (s == ERR_MISS_FILE) //没有找到升级文件则退出
+                {
+                    CH376FileClose(TRUE);
+                    sprintf((char*)string,"I can't fined the Update_File!\n",UpdateSize);
+                    USART_Send_string(string);
+                    quit();     
+                }           
+                UpdateSize = CH376GetFileSize(); 
+                sprintf((char*)string,"The Update_File size is :%dl\n",UpdateSize); 
+                USART_Send_string(string);   
+                
+                LabCount = UpdateSize/SPM_PAGESIZE;
+                lastdatanum = UpdateSize%SPM_PAGESIZE;
+                if(lastdatanum) 
+                    LabCount++;  
+                if(LabCount > (512-32))//mega128的flash页数 
+                {
+                    sprintf((char*)string,"The Update_File size is too big!",UpdateSize); 
+                    USART_Send_string(string);
+                    CH376FileClose(FALSE); 
+                    quit();
+                }
+                //读取升级文件数据          
+                for(i = 0; i < LabCount; i++)
+                {     
+                       
+                    if(lastdatanum && (i == (LabCount - 1)))     
+                    {                                    
+                        CH376ByteRead(data, lastdatanum, NULL); 
+                        for(j = lastdatanum; j < SPM_PAGESIZE; j++)
+                            data[j] = 0xFF;
+                    }
+                    else
+                        CH376ByteRead(data, SPM_PAGESIZE, NULL);        
+                    write_one_page();   
+                    address = address + SPM_PAGESIZE;    //Flash页加1
+                }
+                //write_one_page();         //收到256字节写入一页Flash中
+                //address = address + SPM_PAGESIZE;    //Flash页加1
+                //关闭文件                     
+                CH376FileClose(FALSE);
+#endif
+                quit();
+            }
+            TIFR=TIFR|0x02;
+        }
+    }
+    //每秒向PC机发送一个控制字符"C"，等待控制字〈soh〉
+    while(uart_getchar()!= XMODEM_SOH)        //receive the start of Xmodem
+    {
+         if(TIFR & 0x02)              //timer0 over flow
+        {
+            if(++timercount > 100)                   //wait about 1 second
+            {
+                uart_putchar(XMODEM_RECIEVING_WAIT_CHAR);   //send a "C"
+                timercount = 0;
+            }
+            TIFR = TIFR&0x02;
+        }
+    }
+    //开始接收数据块
+    do
+    {
+        if ((packNO == uart_waitchar()) && (packNO ==(~uart_waitchar())))
+        {    //核对数据块编号正确
+            for(i=0;i<128;i++)             //接收128个字节数据
+            {
+                data[bufferPoint]= uart_waitchar();
+                bufferPoint++;    
+            }
+            crc = (uint)(uart_waitchar())<<8;
+            crc = crc | uart_waitchar();        //接收2个字节的CRC效验字
+            if(calcrc(&data[bufferPoint-128],128) == crc)    //CRC校验验证
+            {    //正确接收128个字节数据
+                while(bufferPoint >= SPM_PAGESIZE)
+                {    //正确接受256个字节的数据
+                    write_one_page();         //收到256字节写入一页Flash中
+                    address = address + SPM_PAGESIZE;    //Flash页加1
+                    bufferPoint = 0;
+                }    
+                uart_putchar(XMODEM_ACK);      //正确收到一个数据块
+                packNO++;                      //数据块编号加1
+            }
+            else
+            {
+                uart_putchar(XMODEM_NAK);     //要求重发数据块
+            }
+        }
+        else
+        {
+            uart_putchar(XMODEM_NAK);           //要求重发数据块
+        }
+    }while(uart_waitchar()!=XMODEM_EOT);          //循环接收，直到全部发完
+    uart_putchar(XMODEM_ACK);                    //通知PC机全部收到
+    
+    if(bufferPoint) write_one_page();        //把剩余的数据写入Flash中
+    quit();                //退出Bootloader程序，从0x0000处执行应用程序       
+}
